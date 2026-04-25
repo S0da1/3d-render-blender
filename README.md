@@ -17,7 +17,17 @@ the use of AI on this project and replace everything with Human-made code.<br>
 --------------------------------------------------------------------------------------------------------
 <br>
 <br>
-
 <img width="1920" height="1080" alt="render2" src="https://github.com/user-attachments/assets/931e3d4e-828d-4649-a3ab-00855fab58a6" /> <br>
 Here is a picture of what the latest version of the engine can achieve ( 25th of April 2026 ) <br>
-Rendered on a MacBook pro M3 max, 36go of ram, 1920x1080, 8 seconds and a 1000 samples.
+Rendered on a MacBook pro M3 max, 36go of ram, 1920x1080, 8 seconds and a 1000 samples.<br>
+<br>
+--------------------------------------------------------------------------------------------------------
+<br>
+<br>
+
+<h1> How to use </h1> <br>
+1.   Download the latest release of the engine.<br>
+2.   Open Blender.<br>
+3.   Drag and drop the zip file in Blender and click okay.<br>
+
+3,5.   Alternatively, you can open the settings with com+, , go to addons, click on the down arrow on the right up corner of the window and click Install from disk.
