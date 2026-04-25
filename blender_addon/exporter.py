@@ -1,95 +1,72 @@
 import bpy
+import os
+import mathutils
 
 def export_scene(depsgraph, filepath):
+    # Context-safe manual exporter with optimization
     with open(filepath, 'w') as f:
         vertex_offset = 1
         uv_offset = 1
         normal_offset = 1
-        current_mat = None
         
         for instance in depsgraph.object_instances:
-            if instance.is_instance:
-                obj = instance.instance_object
-                matrix = instance.matrix_world
-            else:
-                obj = instance.object
-                matrix = obj.matrix_world
+            obj = instance.object
+            if obj.type != 'MESH':
+                continue
+                
+            matrix = instance.matrix_world
             
-            if obj.type == 'MESH':
-                try:
-                    # For evaluated objects, to_mesh works directly
-                    mesh = obj.to_mesh()
-                except RuntimeError:
-                    continue
+            try:
+                mesh = obj.to_mesh()
+            except:
+                continue
+            
+            if not mesh:
+                continue
                 
-                if not mesh:
-                    continue
-                
-                # We need a copy of the mesh to transform it, or just transform it in-place
-                try:
-                    mesh.transform(matrix)
-                except Exception:
-                    pass
-                
-                materials = mesh.materials
-                
-                uv_layer = mesh.uv_layers.active.data if mesh.uv_layers.active else None
-                if hasattr(mesh, "calc_normals_split"):
-                    mesh.calc_normals_split()
-                
-                # Write vertices
-                for v in mesh.vertices:
-                    co = v.co
-                    f.write(f"v {co.x} {co.y} {co.z}\n")
-                    
-                this_uv_offset = uv_offset
-                if uv_layer:
-                    for loop in mesh.loops:
-                        uv = uv_layer[loop.index].uv
-                        f.write(f"vt {uv.x} {uv.y}\n")
-                        
-                this_normal_offset = normal_offset
+            mesh.transform(matrix)
+            mesh.calc_loop_triangles()
+            
+            # Use fast bulk data access
+            verts = mesh.vertices
+            for v in verts:
+                co = v.co
+                f.write(f"v {co.x:.6f} {co.y:.6f} {co.z:.6f}\n")
+            
+            uv_layer = mesh.uv_layers.active.data if mesh.uv_layers.active else None
+            if uv_layer:
                 for loop in mesh.loops:
-                    if hasattr(loop, 'normal'):
-                        n = loop.normal
-                    else:
-                        n = mesh.vertices[loop.vertex_index].normal
-                    f.write(f"vn {n.x} {n.y} {n.z}\n")
+                    uv = uv_layer[loop.index].uv
+                    f.write(f"vt {uv.x:.6f} {uv.y:.6f}\n")
+            
+            for loop in mesh.loops:
+                n = loop.normal
+                f.write(f"vn {n.x:.4f} {n.y:.4f} {n.z:.4f}\n")
+            
+            # Grouping
+            mat_name = "Default"
+            if mesh.materials and len(mesh.materials) > 0:
+                m = mesh.materials[0]
+                if m: mat_name = m.name
+            f.write(f"usemtl {mat_name}\n")
+            
+            this_uv_off = uv_offset
+            this_v_off = vertex_offset
+            this_vn_off = normal_offset
+            
+            for tri in mesh.loop_triangles:
+                # Triangles only for the renderer
+                v1, v2, v3 = [this_v_off + mesh.loops[i].vertex_index for i in tri.loops]
+                vn1, vn2, vn3 = [this_vn_off + i for i in tri.loops]
                 
-                # Write faces with material grouping
-                for pol in mesh.polygons:
-                    mat_name = "Default"
-                    if materials and pol.material_index < len(materials):
-                        mat = materials[pol.material_index]
-                        if mat: mat_name = mat.name
-                    
-                    if mat_name != current_mat:
-                        f.write(f"usemtl {mat_name}\n")
-                        current_mat = mat_name
-                    
-                    verts = pol.vertices
-                    loop_start = pol.loop_start
-                    # Fan triangulation
-                    for i in range(1, len(verts) - 1):
-                        v1 = vertex_offset + verts[0]
-                        v2 = vertex_offset + verts[i]
-                        v3 = vertex_offset + verts[i+1]
-                        
-                        vt1 = this_uv_offset + loop_start + 0
-                        vt2 = this_uv_offset + loop_start + i
-                        vt3 = this_uv_offset + loop_start + i + 1
-                        
-                        vn1 = this_normal_offset + loop_start + 0
-                        vn2 = this_normal_offset + loop_start + i
-                        vn3 = this_normal_offset + loop_start + i + 1
-                        
-                        if uv_layer:
-                            f.write(f"f {v1}/{vt1}/{vn1} {v2}/{vt2}/{vn2} {v3}/{vt3}/{vn3}\n")
-                        else:
-                            f.write(f"f {v1}//{vn1} {v2}//{vn2} {v3}//{vn3}\n")
-                
-                vertex_offset += len(mesh.vertices)
                 if uv_layer:
-                    uv_offset += len(mesh.loops)
-                normal_offset += len(mesh.loops)
-                obj.to_mesh_clear()
+                    vt1, vt2, vt3 = [this_uv_off + i for i in tri.loops]
+                    f.write(f"f {v1}/{vt1}/{vn1} {v2}/{vt2}/{vn2} {v3}/{vt3}/{vn3}\n")
+                else:
+                    f.write(f"f {v1}//{vn1} {v2}//{vn2} {v3}//{vn3}\n")
+            
+            vertex_offset += len(mesh.vertices)
+            uv_offset += len(mesh.loops)
+            normal_offset += len(mesh.loops)
+            
+            obj.to_mesh_clear()

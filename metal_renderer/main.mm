@@ -15,9 +15,10 @@ int main(int argc, const char * argv[]) {
         std::string outputImg = argv[3];
         int width = std::stoi(argv[4]);
         int height = std::stoi(argv[5]);
+        std::string generatedShaderPath = (argc >= 7) ? argv[6] : "";
         
         Renderer renderer;
-        bool success = renderer.handleScene(inputObj, inputJson, outputImg, width, height);
+        bool success = renderer.handleScene(inputObj, inputJson, outputImg, width, height, generatedShaderPath);
         
         if (success) {
             std::cout << "Rendering completed successfully." << std::endl;

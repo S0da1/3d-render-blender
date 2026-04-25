@@ -29,19 +29,41 @@ struct SceneData {
     
     int width;
     int height;
+    
+    // Depth of Field
+    float _dofFocalDistance  = 10.0f;
+    float _dofApertureRadius = 0.0f;
+    // Environment
+    float _envStrength  = 1.0f;
+    bool  _hasHDRI      = false;
+    std::string _hdriPath;
+    // Firefly clamping
+    float _fireflyClamp = 10.0f;
+    // Background
+    bool _showBackground = true;
+    
+    // Global Volume (Fog)
+    float _volDensity = 0.0f;
+    simd_float3 _volColor = {1.0f, 1.0f, 1.0f};
+    float _volAnisotropy = 0.0f;
+    float _volFalloff = 0.2f;
 };
+
 
 class Renderer {
 public:
     Renderer();
     ~Renderer();
 
-    bool handleScene(const std::string& objPath, const std::string& jsonPath, const std::string& outPath, int width, int height);
+    bool handleScene(const std::string& objPath, const std::string& jsonPath, const std::string& outPath, int width, int height, const std::string& generatedShaderPath = "");
 
 private:
     id<MTLDevice> _device;
     id<MTLCommandQueue> _commandQueue;
     id<MTLComputePipelineState> _raytracingPipeline;
+    id<MTLComputePipelineState> _photonEmissionPipeline;
+    id<MTLComputePipelineState> _hashGridClearPipeline;
+    id<MTLComputePipelineState> _hashGridBuildPipeline;
     std::vector<id<MTLTexture>> _sceneTextures;
     
     // Parsed dynamically from JSON
@@ -49,6 +71,9 @@ private:
     id<MTLBuffer> _materialsBuffer;
     id<MTLBuffer> _vertexBuffer;
     id<MTLBuffer> _indexBuffer;
+    id<MTLBuffer> _photonBuffer;
+    id<MTLBuffer> _hashGridBuffer;
+    id<MTLBuffer> _globalAtomicBuffer;
     int _lightCount = 0;
     
     bool loadSimpleObj(const std::string& filepath, SceneData& outData, std::unordered_map<std::string, uint32_t>& mtlMap);

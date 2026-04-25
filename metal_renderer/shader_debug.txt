@@ -1,3 +1,76 @@
+=== METAL ERROR ===
+program_source:51:231: error: vector condition type 'bool __attribute__((ext_vector_type(3)))' (vector of 3 'bool' values) and result type 'metal::float3' (aka 'float3') do not have elements of the same size
+        case 2: return ((clamp((float3(0.50000, 0.50000, 0.50000) * float3(0.00000)), 0.0, 1.0)) <= 0.30000 ? float3(0.10000, 0.05000, 0.02000) : ((clamp((float3(0.50000, 0.50000, 0.50000) * float3(0.00000)), 0.0, 1.0)) < 0.70000 ? mix(float3(0.10000, 0.05000, 0.02000), float3(0.45000, 0.25000, 0.15000), clamp((clamp((float3(0.50000, 0.50000, 0.50000) * float3(0.00000)), 0.0, 1.0) - 0.30000) / 0.40000, 0.0, 1.0)) : float3(0.45000, 0.25000, 0.15000)));
+                                                                                                                                                                                                                                      ^
+program_source:701:133: warning: comparison of integers of different signs: 'int' and 'const constant uint' (aka 'const constant unsigned int') [-Wsign-compare]
+                            if (nx >= 0 && nx < uniforms.gridResolution && ny >= 0 && ny < uniforms.gridResolution && nz >= 0 && nz < uniforms.gridResolution) {
+                                                                                                                                 ~~ ^ ~~~~~~~~~~~~~~~~~~~~~~~
+program_source:701:90: warning: comparison of integers of different signs: 'int' and 'const constant uint' (aka 'const constant unsigned int') [-Wsign-compare]
+                            if (nx >= 0 && nx < uniforms.gridResolution && ny >= 0 && ny < uniforms.gridResolution && nz >= 0 && nz < uniforms.gridResolution) {
+                                                                                      ~~ ^ ~~~~~~~~~~~~~~~~~~~~~~~
+program_source:701:47: warning: comparison of integers of different signs: 'int' and 'const constant uint' (aka 'const constant unsigned int') [-Wsign-compare]
+                            if (nx >= 0 && nx < uniforms.gridResolution && ny >= 0 && ny < uniforms.gridResolution && nz >= 0 && nz < uniforms.gridResolution) {
+                                           ~~ ^ ~~~~~~~~~~~~~~~~~~~~~~~
+
+
+=== FULL SOURCE ===
+#include <metal_stdlib>
+using namespace metal;
+
+struct SurfaceProps { float3 albedo; float roughness; float3 normal; };
+
+
+// ---------------------------------------------------------
+// AUTO-GENERATED JIT BLENDER SHADERS
+// ---------------------------------------------------------
+
+// Simple 3D hash — returns float in [0,1]
+inline float msl_hash(float3 p) {
+    p  = fract( p * 0.3183099 + float3(0.1) );
+    p *= 17.0;
+    return fract( p.x * p.y * p.z * (p.x + p.y + p.z) );
+}
+
+// Value noise
+inline float msl_noise3d(float3 x) {
+    float3 p = floor(x);
+    float3 f = fract(x);
+    f = f*f*(3.0-2.0*f);
+    return mix(mix(mix( msl_hash(p+float3(0,0,0)), msl_hash(p+float3(1,0,0)), f.x),
+                   mix( msl_hash(p+float3(0,1,0)), msl_hash(p+float3(1,1,0)), f.x), f.y),
+               mix(mix( msl_hash(p+float3(0,0,1)), msl_hash(p+float3(1,0,1)), f.x),
+                   mix( msl_hash(p+float3(0,1,1)), msl_hash(p+float3(1,1,1)), f.x), f.y), f.z);
+}
+
+// Voronoi distance
+inline float msl_voronoi3d(float3 x) {
+    float3 p = floor(x);
+    float3 f = fract(x);
+    float res = 8.0;
+    for(int k=-1; k<=1; k++)
+    for(int j=-1; j<=1; j++)
+    for(int i=-1; i<=1; i++) {
+        float3 b = float3(float(i), float(j), float(k));
+        float3 r = b - f + msl_hash(p + b);
+        float d = dot(r, r);
+        if(d < res) res = d;
+    }
+    return sqrt(res);
+}
+
+// JIT material evaluator
+// texArray contains textures 1..N (outTexture is at 0, scene textures start after)
+inline float3 evaluate_material_jit(uint matIdx, float3 P, float2 UV, float3 default_albedo, 
+                                    sampler textureSampler, array<texture2d<float>, 30> texArray) {
+    switch (matIdx) {
+        case 0: return ((clamp((float3(msl_voronoi3d(P * 5.00000), msl_voronoi3d(P * 5.00000 + 1.3), msl_voronoi3d(P * 5.00000 + 2.7))).x, 0.0, 1.0)) <= 0.00000 ? float3(0.05714, 0.04229, 0.63702) : ((clamp((float3(msl_voronoi3d(P * 5.00000), msl_voronoi3d(P * 5.00000 + 1.3), msl_voronoi3d(P * 5.00000 + 2.7))).x, 0.0, 1.0)) < 0.27091 ? mix(float3(0.05714, 0.04229, 0.63702), float3(0.29876, 1.00000, 0.24535), clamp((clamp((float3(msl_voronoi3d(P * 5.00000), msl_voronoi3d(P * 5.00000 + 1.3), msl_voronoi3d(P * 5.00000 + 2.7))).x, 0.0, 1.0) - 0.00000) / 0.27091, 0.0, 1.0)) : ((clamp((float3(msl_voronoi3d(P * 5.00000), msl_voronoi3d(P * 5.00000 + 1.3), msl_voronoi3d(P * 5.00000 + 2.7))).x, 0.0, 1.0)) < 0.63818 ? mix(float3(0.29876, 1.00000, 0.24535), float3(0.97525, 0.06184, 0.11252), clamp((clamp((float3(msl_voronoi3d(P * 5.00000), msl_voronoi3d(P * 5.00000 + 1.3), msl_voronoi3d(P * 5.00000 + 2.7))).x, 0.0, 1.0) - 0.27091) / 0.36727, 0.0, 1.0)) : float3(0.97525, 0.06184, 0.11252))));
+        case 2: return ((clamp((float3(0.50000, 0.50000, 0.50000) * float3(0.00000)), 0.0, 1.0)) <= 0.30000 ? float3(0.10000, 0.05000, 0.02000) : ((clamp((float3(0.50000, 0.50000, 0.50000) * float3(0.00000)), 0.0, 1.0)) < 0.70000 ? mix(float3(0.10000, 0.05000, 0.02000), float3(0.45000, 0.25000, 0.15000), clamp((clamp((float3(0.50000, 0.50000, 0.50000) * float3(0.00000)), 0.0, 1.0) - 0.30000) / 0.40000, 0.0, 1.0)) : float3(0.45000, 0.25000, 0.15000)));
+
+        default: return default_albedo;
+    }
+    return default_albedo;
+}
+
 #include <metal_raytracing>
 using namespace metal::raytracing;
 
@@ -26,15 +99,10 @@ struct Uniforms {
     // Environment
     float envStrength;
     uint hasHDRI;
-    // Background visibility
-    uint showBackground;
     // Firefly clamping
     float fireflyClamp;
-    // Global Volume
-    float volDensity;
-    float3 volColor;
-    float volAnisotropy;
-    float volFalloff;
+    // Background visibility
+    uint showBackground;
 };
 
 
@@ -63,10 +131,6 @@ struct MaterialData {
     float ior;
     int baseColorIndex;
     int normalMapIndex;
-    // Volume properties
-    uint isVolumetric;
-    float volDensity;
-    float3 volColor;
 };
 
 struct VertexData {
@@ -96,30 +160,7 @@ float random(thread uint2& state) {
     return float(state.x + state.y) / 4294967296.0f;
 }
 
-float3 sample_henyey_greenstein(thread uint2& state, float3 forward, float g) {
-    float u1 = random(state);
-    float u2 = random(state);
-    
-    float cosTheta;
-    if (fast::abs(g) < 0.001) {
-        cosTheta = 1.0 - 2.0 * u1;
-    } else {
-        float sqr = (1.0 - g * g) / (1.0 + g - 2.0 * g * u1);
-        cosTheta = (1.0 + g * g - sqr * sqr) / (2.0 * g);
-    }
-    
-    float sinTheta = fast::sqrt(max(0.0, 1.0 - cosTheta * cosTheta));
-    float phi = 2.0 * 3.14159265 * u2;
-    float3 localDir = float3(sinTheta * fast::cos(phi), sinTheta * fast::sin(phi), cosTheta);
-    
-    // Basis transform
-    float3 up = abs(forward.z) < 0.999 ? float3(0,0,1) : float3(1,0,0);
-    float3 tangent = normalize(cross(up, forward));
-    float3 bitangent = cross(forward, tangent);
-    return normalize(tangent * localDir.x + bitangent * localDir.y + forward * localDir.z);
-}
-
-inline float3 sample_cosine_hemisphere(thread uint2& state, float3 normal) {
+float3 sample_cosine_hemisphere(thread uint2& state, float3 normal) {
     float u1 = random(state);
     float u2 = random(state);
     float r = sqrt(u1);
@@ -152,7 +193,7 @@ float3 sample_ggx(thread uint2& state, float3 normal, float roughness) {
 }
 
 float3 schlick_fresnel(float cosTheta, float3 F0) {
-    return F0 + (1.0 - F0) * fast::pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
 // Fresnel for dielectrics (glass)
@@ -481,118 +522,26 @@ kernel void emit_photons_kernel(
 
         
         for (uint b = 0; b < uniforms.bounces; b++) {
-            // Russian Roulette path termination
-            if (b > 3) {
-                float q = max(0.05f, 1.0f - max(throughput.x, max(throughput.y, throughput.z)));
-                if (random(state) < q) break;
-                throughput /= (1.0f - q);
-            }
-
-            r.min_distance = 0.001;
-            r.max_distance = 10000.0;
-            
             intersector<triangle_data> intersec;
             intersec.accept_any_intersection(false);
             auto intersection = intersec.intersect(r, accel);
             
-            float tHit = (intersection.type == intersection_type::none) ? 10000.0 : intersection.distance;
-            
-            // --- ANALYTIC EXPONENTIAL ATMOSPHERE ---
-            float sigma0 = uniforms.volDensity * 0.01f;
-            float k = max(0.001f, uniforms.volFalloff); 
-            float3 scatterPoint = r.origin;
-            bool scattered = false;
-            
-            if (sigma0 > 0.0001 && r.origin.y < 50.0) {
-                float y0 = r.origin.y;
-                float sigma_y0 = sigma0 * fast::exp(-max(-20.0, y0 * k)); // Precompute for the segment
-                
-                float xi = max(0.00001, random(state));
-                float tau = -fast::log(xi);
-                float wy = r.direction.y;
-                float s;
-                
-                if (abs(wy) < 0.001) {
-                    s = tau / max(0.00001, sigma_y0);
-                } else {
-                    float a = (tau * k * wy) / sigma_y0;
-                    if (a < 0.99) { 
-                        s = -fast::log(1.0 - a) / (k * wy);
-                    } else {
-                        s = 1e9;
-                    }
-                }
-                
-                if (s < tHit) {
-                    scattered = true;
-                    scatterPoint = r.origin + r.direction * s;
-                    throughput *= uniforms.volColor;
-                    
-                    // Direct lighting in volume
-                    for (uint l = 0; l < uniforms.lightCount; l++) {
-                        LightSample ls = sample_light(lights[l], scatterPoint, r.direction, state);
-                        if (ls.radiance.x + ls.radiance.y + ls.radiance.z > 0.0) {
-                            ray shadow_ray;
-                            shadow_ray.origin = scatterPoint;
-                            shadow_ray.direction = ls.direction;
-                            shadow_ray.min_distance = 0.001;
-                            shadow_ray.max_distance = ls.distance;
-                            intersector<triangle_data> shadow_intersec;
-                            shadow_intersec.accept_any_intersection(true);
-                            if (shadow_intersec.intersect(shadow_ray, accel).type == intersection_type::none) {
-                                float3 phase = 1.0 / (4.0 * 3.14159265);
-                                
-                                // Robust light attenuation with hotspot clamp
-                                float dist = max(0.1f, ls.distance); // Prevent 1/r^2 blowouts
-                                float sy0 = scatterPoint.y;
-                                float swy = ls.direction.y;
-                                float shadowTau;
-                                if (abs(swy) < 0.001) {
-                                    shadowTau = (sigma0 * exp(-sy0 * k)) * dist;
-                                } else {
-                                    shadowTau = (sigma0 * exp(-sy0 * k) / (k * swy)) * (1.0 - exp(-k * swy * dist));
-                                }
-                                radiance += throughput * ls.radiance * phase * exp(-clamp(max(0.0, shadowTau), 0.0, 10.0));
-                            }
-                        }
-                    }
-                    
-                    r.direction = sample_henyey_greenstein(state, r.direction, uniforms.volAnisotropy);
-                    r.origin = scatterPoint;
-                    continue;
-                } else {
-                    // SURFACE HIT ATTENUATION: Attenuate throughput by fog between origin and hit
-                    float y0 = r.origin.y;
-                    float wy = r.direction.y;
-                    float segmentTau = 0.0;
-                    if (y0 < 50.0) {
-                        if (abs(wy) < 0.001) {
-                            segmentTau = (sigma0 * exp(-max(-20.0, y0 * k))) * tHit;
-                        } else {
-                            float tCeil = (50.0 - y0) / wy;
-                            float tMax = (wy > 0.0) ? min(tHit, tCeil) : tHit;
-                            if (tMax > 0.0) {
-                                float exponent = clamp(-k * wy * tMax, -20.0, 20.0);
-                                segmentTau = (sigma0 * exp(-max(-20.0, y0 * k)) / (k * wy)) * (1.0 - exp(exponent));
-                            }
-                        }
-                    }
-                    throughput *= fast::exp(-clamp(max(0.0, segmentTau), 0.0, 10.0));
-                }
-            }
-
             if (intersection.type == intersection_type::none) {
                 // Environment / HDRI
                 float3 envColor = float3(0.0);
+                
+                // Logic: Always use HDRI for lighting (reflections/secondary bounces)
+                // Only hide it if it's the first ray (camera ray) and showBackground is OFF
                 if (uniforms.showBackground || b > 0) {
                     if (uniforms.hasHDRI) {
                         float3 d = r.direction;
-                        float theta = fast::acos(clamp(d.y, -1.0, 1.0));
-                        float phi   = fast::atan2(d.z, d.x);
+                        float theta = acos(clamp(d.y, -1.0, 1.0));
+                        float phi   = atan2(d.z, d.x);
                         float2 envUV = float2((phi / (2.0 * 3.14159265)) + 0.5, theta / 3.14159265);
                         constexpr sampler envSampler(address::repeat, filter::linear);
                         envColor = envTexture.sample(envSampler, envUV).rgb * uniforms.envStrength;
                     } else {
+                        // Procedural sky gradient
                         float skyT = clamp(r.direction.y * 0.5 + 0.5, 0.0, 1.0);
                         envColor = mix(float3(0.5, 0.6, 0.8), float3(0.9, 0.95, 1.0), skyT) * uniforms.envStrength;
                     }
@@ -604,30 +553,6 @@ kernel void emit_photons_kernel(
             uint prim_id = intersection.primitive_id;
             uint mat_id = materialIndices[prim_id];
             MaterialData mat = materials[mat_id];
-            
-            // --- LOCAL FOG BOX LOGIC ---
-            if (mat.isVolumetric) {
-                // Apply the same height falloff to containers
-                float localBoxFalloff = fast::exp(-fast::max(0.0, r.origin.y) * k);
-                float xi = random(state);
-                float effectiveDensity = fast::max(sigma0, mat.volDensity * 0.01f) * localBoxFalloff;
-                float tVol = -fast::log(fast::max(0.00001, 1.0 - xi)) / fast::max(0.0001, effectiveDensity);
-                
-                if (tVol < intersection.distance) {
-                    // Scatter inside the box
-                    float3 scatterPoint = r.origin + r.direction * tVol;
-                    throughput *= mat.volColor;
-                    r.direction = sample_henyey_greenstein(state, r.direction, uniforms.volAnisotropy);
-                    r.origin = scatterPoint;
-                    continue;
-                } else {
-                    // We passed through the surface of the volume box without scattering
-                    // Move ray origin PAST the surface and continue (penetrate)
-                    r.origin = r.origin + r.direction * (intersection.distance + 0.001);
-                    b--; // Don't count "passing through invisible surface" as a bounce
-                    continue;
-                }
-            }
             
             uint i0 = indices[prim_id * 3 + 0];
             uint i1 = indices[prim_id * 3 + 1];
@@ -685,19 +610,23 @@ kernel void emit_photons_kernel(
             // Emission
             radiance += throughput * matAlbedo * mat.emission;
             
-            // Direct Lighting
+            // Direct lighting — all light types
             for (uint l = 0; l < uniforms.lightCount; l++) {
-                LightSample ls = sample_light(lights[l], hitPoint, r.direction, state);
-                if (ls.radiance.x + ls.radiance.y + ls.radiance.z > 0.0) {
+                LightSample ls = sample_light(lights[l], hitPoint, normal, state);
+                float NdotL = max(0.0, dot(normal, ls.direction));
+                if (NdotL > 0.0 && ls.radiance.x + ls.radiance.y + ls.radiance.z > 0.0) {
                     ray shadow_ray;
-                    shadow_ray.origin = hitPoint;
-                    shadow_ray.direction = ls.direction;
+                    shadow_ray.origin      = hitPoint + normal * 0.001;
+                    shadow_ray.direction   = ls.direction;
                     shadow_ray.min_distance = 0.001;
                     shadow_ray.max_distance = ls.distance;
-                    
+
                     intersector<triangle_data> shadow_intersec;
                     shadow_intersec.accept_any_intersection(true);
-                    if (shadow_intersec.intersect(shadow_ray, accel).type == intersection_type::none) {
+                    auto shadow_hit = shadow_intersec.intersect(shadow_ray, accel);
+                    bool in_shadow = (shadow_hit.type != intersection_type::none);
+
+                    if (!in_shadow) {
                         float3 V = normalize(-r.direction);
                         float3 H = normalize(V + ls.direction);
                         float NdotV      = max(dot(normal, V), 0.0001f);
@@ -715,22 +644,7 @@ kernel void emit_photons_kernel(
                         float3 specular = (NDF * G * F) / (4.0 * NdotV * NdotL_c + 0.0001);
                         float3 brdf = (kD * matAlbedo / 3.14159265) + specular;
 
-                        // --- SURFACE LIGHTING ATTENUATION BY FOG ---
-                        float shadowDist = max(0.1f, ls.distance);
-                        float sy0 = hitPoint.y;
-                        float swy = ls.direction.y;
-                        float shadowTau = 0.0;
-                        if (abs(swy) < 0.001) {
-                            shadowTau = (sigma0 * exp(-max(-20.0, sy0 * k))) * shadowDist;
-                        } else {
-                            float tCeilShadow = (50.0 - sy0) / swy;
-                            float tMaxShadow = (swy > 0.0) ? min(shadowDist, tCeilShadow) : shadowDist;
-                            if (tMaxShadow > 0.0) {
-                                float exponentS = clamp(-k * swy * tMaxShadow, -20.0, 20.0);
-                                shadowTau = (sigma0 * exp(-max(-20.0, sy0 * k)) / (k * swy)) * (1.0 - exp(exponentS));
-                            }
-                        }
-                        radiance += throughput * brdf * ls.radiance * NdotL_c * exp(-clamp(max(0.0, shadowTau), 0.0, 10.0));
+                        radiance += throughput * brdf * ls.radiance * NdotL;
                     }
                 }
             }
